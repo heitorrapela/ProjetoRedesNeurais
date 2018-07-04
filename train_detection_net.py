@@ -28,7 +28,7 @@ def train_det_net():
     batch = 500
     size = (48,48,3)
     start_epoch = 0
-    end_epoch = 3
+    end_epoch = 10
     train_validation_rate = 0.9 # training set / all sample
 
     # load the pretrained model , set None if you don't have
@@ -53,14 +53,17 @@ def train_det_net():
     else:
         sess.run(tf.global_variables_initializer())    
     
-    
+    file1 = open('train_detect_training_error.txt', 'w')
+    file2 = open('train_detect_validation_error.txt', 'w')
 
+    num_iterations = 300
+    
     for epoch in xrange(start_epoch,end_epoch):
         loss = 0
         iteration = 0
         sess.run(train_op)
         # get each element of the training dataset until the end is reached
-        while True:
+        while iteration <= num_iterations:
             try:
                 # default of the size returned from data iterator is 48
                 inputs,clss ,pattern = sess.run(next_ele)
@@ -94,7 +97,7 @@ def train_det_net():
                 losses = sess.run([net.loss for net in train_nets],\
                         feed_dict = net_feed_dict)
 
-                if iteration % 100 == 0:
+                if iteration % 10 == 0:
                     net_12_eva = net_12.evaluate(inputs_12,clss)
                     net_12_acc = sum(net_12_eva)/len(net_12_eva)
                     net_24_eva = net_24.evaluate(inputs_24,clss,net_12_fc)
@@ -105,7 +108,11 @@ def train_det_net():
                             .format(epoch , iteration , net_12_acc , net_24_acc , net_48_acc  , losses))
                         
 
+                    file1.write('Training Epoch {} --- Iter {} --- Training Accuracy:  {}%,{}%,{}% --- Training Loss: {}\n'\
+                            .format(epoch , iteration , net_12_acc , net_24_acc , net_48_acc  , losses))
+                    
                 iteration += 1
+                print(iteration)
             except tf.errors.OutOfRangeError:
                 # print("End of training dataset.")
                 break
@@ -148,9 +155,18 @@ def train_det_net():
                                             sum(net_24_acc)/len(net_24_acc),\
                                             sum(net_48_acc)/len(net_48_acc)))
 
+        file2.write('Validation Epoch {}  Validation Accuracy:  {}%,{}%,{}%\n'\
+                            .format(epoch , sum(net_12_acc)/len(net_12_acc),\
+                                            sum(net_24_acc)/len(net_24_acc),\
+                                            sum(net_48_acc)/len(net_48_acc)))
+
+
+
         saver = tf.train.Saver()
         save_path = saver.save(sess, "models/48_net_{}.ckpt".format(epoch))
         print ("Model saved in file: ", save_path)
+    file1.close()
+    file2.close()
 
 if __name__ == "__main__":
     train_det_net()
