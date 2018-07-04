@@ -36,7 +36,7 @@ def conv2d(x, W, stride, pad = 'SAME'):
 def max_pool(x, kernelSz, stride, pad = 'SAME'):
     return tf.nn.max_pool(x, ksize=[1, kernelSz, kernelSz, 1], strides=[1, stride, stride, 1], padding=pad)
 
-# 6-net
+#12-net
 class detect_12Net:
     def __init__(self,size = (48,48,3),lr = 0.001 , is_train = True):
         self.size = size
@@ -48,8 +48,8 @@ class detect_12Net:
         with tf.variable_scope("12det_"):
         
             #conv layer 1
-            self.w_conv1 = weight_variable([3,3,size[2],4],"w_conv1")
-            self.b_conv1 = bias_variable([4],"b_conv1")
+            self.w_conv1 = weight_variable([3,3,size[2],16],"w_conv1")
+            self.b_conv1 = bias_variable([16],"b_conv1")
             self.conv1 = tf.nn.relu(conv2d(self.inputs, self.w_conv1, 1) + self.b_conv1)
             
             
@@ -58,16 +58,15 @@ class detect_12Net:
             
 
             #fully conv layer 1
-            self.w_fc1 = weight_variable([int(size[0]/2 * size[1]/2 * 4), 4],'w_fc1',lr_type = 'fc')
-            self.b_fc1 = bias_variable([4],'b_fc1')
-            self.pool1_flat = tf.reshape(self.pool1, [-1, int(size[0]/2 * size[1]/2 * 4)])
+            self.w_fc1 = weight_variable([int(size[0]/2 * size[1]/2 * 16), 16],'w_fc1',lr_type = 'fc')
+            self.b_fc1 = bias_variable([16],'b_fc1')
+            self.pool1_flat = tf.reshape(self.pool1, [-1, int(size[0]/2 * size[1]/2 *16)])
             self.fc1 = tf.nn.relu(tf.matmul(self.pool1_flat, self.w_fc1) + self.b_fc1)
             
-            # 3 * 3 * 16 = 9 * 16 = 144 
-            # 3 * 3 * 4 = 36
+
 
             #fully conv layer 2
-            self.w_fc2 = weight_variable([4, 2],'w_fc2',lr_type = 'fc')
+            self.w_fc2 = weight_variable([16, 2],'w_fc2',lr_type = 'fc')
             self.b_fc2 = bias_variable([2],'b_fc2')
             self.fc2 = tf.matmul(self.fc1,self.w_fc2) + self.b_fc2
         if is_train:
@@ -93,12 +92,12 @@ class detect_24Net:
         self.inputs = tf.placeholder("float",[None,size[0],size[1],size[2]])
         self.targets = tf.placeholder("float", [None,2])
         # the fc1 from 12net
-        self.from_12 = tf.placeholder("float",[None,4])
+        self.from_12 = tf.placeholder("float",[None,16])
 
         with tf.variable_scope("24det_"):
             #conv layer 1
-            self.w_conv1 = weight_variable([3,3,size[2],16],"w_conv1")
-            self.b_conv1 = bias_variable([16],"b_conv1")
+            self.w_conv1 = weight_variable([3,3,size[2],64],"w_conv1")
+            self.b_conv1 = bias_variable([64],"b_conv1")
             self.conv1 = tf.nn.relu(conv2d(self.inputs, self.w_conv1, 1) + self.b_conv1)
             
             
@@ -107,23 +106,20 @@ class detect_24Net:
             
 
             #fully conv layer 1
-            self.w_fc1 = weight_variable([int(size[0]/2 * size[1]/2 * 16), 32],lr_type = 'fc')
-            self.b_fc1 = bias_variable([32])
-            self.pool1_flat = tf.reshape(self.pool1, [-1, int(size[0]/2 * size[1]/2 * 16)])
+            self.w_fc1 = weight_variable([int(size[0]/2 * size[1]/2 * 64), 128],lr_type = 'fc')
+            self.b_fc1 = bias_variable([128])
+            self.pool1_flat = tf.reshape(self.pool1, [-1, int(size[0]/2 * size[1]/2 *64)])
             self.fc1 = tf.nn.relu(tf.matmul(self.pool1_flat, self.w_fc1) + self.b_fc1)
             
             
             #concat
-            print(self.from_12)
-            print(self.fc1)
             self.concat1 = tf.concat([self.fc1,self.from_12],1)
 
 
             #fully conv layer 2
-            self.w_fc2 = weight_variable([32+4, 2],lr_type = 'fc')
+            self.w_fc2 = weight_variable([128+16, 2],lr_type = 'fc')
             self.b_fc2 = bias_variable([2])
             self.fc2 = tf.matmul(self.concat1,self.w_fc2) + self.b_fc2
-            print("ALOW VSAIJSAJS")
             
         if is_train:
             self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=self.fc2,labels =self.targets))
@@ -147,12 +143,12 @@ class detect_48Net:
         self.inputs = tf.placeholder("float",[None,size[0],size[1],size[2]])
         self.targets = tf.placeholder("float", [None,2])
         # the concat1 from 24net
-        self.from_24 = tf.placeholder("float",[None,36])
+        self.from_24 = tf.placeholder("float",[None,16+128])
 
         with tf.variable_scope("48det_"):
             #conv layer 1
-            self.w_conv1 = weight_variable([5,5,size[2],16],"w_conv1")
-            self.b_conv1 = bias_variable([16],"b_conv1")
+            self.w_conv1 = weight_variable([5,5,size[2],64],"w_conv1")
+            self.b_conv1 = bias_variable([64],"b_conv1")
             self.conv1 = tf.nn.relu(conv2d(self.inputs, self.w_conv1, 1) + self.b_conv1)
             
             
@@ -161,8 +157,8 @@ class detect_48Net:
             
 
             #conv layer 2
-            self.w_conv2 = weight_variable([5,5,16,16],"w_conv2")
-            self.b_conv2 = bias_variable([16],"b_conv2")
+            self.w_conv2 = weight_variable([5,5,64,64],"w_conv2")
+            self.b_conv2 = bias_variable([64],"b_conv2")
             self.conv2 = tf.nn.relu(conv2d(self.pool1, self.w_conv2, 1) + self.b_conv2)
             
             
@@ -172,9 +168,9 @@ class detect_48Net:
 
 
             #fully conv layer 1
-            self.w_fc1 = weight_variable([int(size[0]/4 * size[1]/4 * 16), 64],lr_type = 'fc')
-            self.b_fc1 = bias_variable([64])
-            self.pool2_flat = tf.reshape(self.pool2, [-1, int(size[0]/4 * size[1]/4 * 16)])
+            self.w_fc1 = weight_variable([int(size[0]/4 * size[1]/4 * 64), 256],lr_type = 'fc')
+            self.b_fc1 = bias_variable([256])
+            self.pool2_flat = tf.reshape(self.pool2, [-1, int(size[0]/4 * size[1]/4 *64)])
             self.fc1 = tf.nn.relu(tf.matmul(self.pool2_flat, self.w_fc1) + self.b_fc1)
             
             
@@ -184,7 +180,7 @@ class detect_48Net:
 
 
             #fully conv layer 2
-            self.w_fc2 = weight_variable([64+32+4, 2],lr_type = 'fc')
+            self.w_fc2 = weight_variable([256+128+16, 2],lr_type = 'fc')
             self.b_fc2 = bias_variable([2])
             self.fc2 = tf.matmul(self.concat1,self.w_fc2) + self.b_fc2
         if is_train:
